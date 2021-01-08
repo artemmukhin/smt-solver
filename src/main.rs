@@ -2,6 +2,7 @@ use smt_solver;
 use smt_solver::{Relation, Term, Kind};
 use std::collections::{HashSet, HashMap};
 use disjoint_sets::UnionFind;
+use daggy::{Dag, NodeIndex};
 
 fn get_unsat_example() -> Vec<Relation> {
     vec![
@@ -22,6 +23,9 @@ fn get_unsat_example() -> Vec<Relation> {
         },
     ]
 }
+
+#[derive(Clone, Eq, PartialEq, Hash)]
+struct Node<'a>(&'a Term);
 
 fn main() {
     let relations = get_unsat_example();
@@ -59,8 +63,29 @@ fn main() {
         let s = *all_subterms.get(&relation.left).unwrap();
         let t = *all_subterms.get(&relation.right).unwrap();
         union_find.union(s, t);
-        // TODO: propagate the new congruence with symmetry, transitivity, and functional congruence
     }
+    
+    let mut dag = Dag::<Node, (), u32>::new();
+
+    let mut nodes: HashMap<&Term, NodeIndex> = HashMap::new();
+    
+    for (subterm, _) in all_subterms.iter() {
+        let node = Node(&subterm);
+        let index = dag.add_node(node);
+        nodes.insert(&subterm, index);
+    }
+    for (subterm, _) in all_subterms.iter() {
+        let node = nodes[&subterm];
+        let children = subterm.arguments
+            .iter()
+            .map(|arg| nodes[&**arg])
+            .collect::<Vec<_>>();
+        for child in children {
+            dag.add_edge(node, child, ());
+        }
+    }
+
+    // TODO: propagate the new congruence with symmetry, transitivity, and functional congruence
 
     println!("Union-Find");
     for (subterm, i) in all_subterms.iter() {

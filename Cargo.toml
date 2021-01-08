@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 disjoint-sets = "0.4.2"
+daggy = "0.7.0"
