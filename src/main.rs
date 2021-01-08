@@ -1,19 +1,19 @@
 use smt_solver;
-use smt_solver::{Relation, Term, RelationKind};
+use smt_solver::{Relation, Term, Kind};
 
 fn main() {
-    // `f(x, y) = g(x)`
+    // `f(x, y, z) = g(x, z)`
     let relation = Relation {
-        left: Term { 
-            name: "f".to_string(),
-            arguments: vec![Term::var("x"), Term::var("y")]
-        },
-        right: Term {
-            name: "g".to_string(),
-            arguments: vec![Term::var("x")]
-        },
-        kind: RelationKind::Equal
+        left: Term::fun("f", vec![Term::var("x"), Term::var("y"), Term::var("z")]),
+        right: Term::fun("g", vec![Term::var("x"), Term::var("z")]),
+        kind: Kind::Equal
     };
-    
-    println!("{:#?}", relation);
+    println!("Relation");
+    println!("{}\n", relation);
+
+    let sub_terms: Vec<_> = relation.sub_terms().collect();
+    println!("Subterms");
+    for sub_term in sub_terms {
+        println!("{}", sub_term);
+    }
 }
