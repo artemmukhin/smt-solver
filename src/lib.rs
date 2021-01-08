@@ -41,7 +41,7 @@ impl Term {
         Term { name: name.to_string(), arguments: args.into_iter().map(|arg| Box::new(arg)).collect() }
     }
 
-    pub fn sub_terms(&self) -> SubTerms {
+    pub fn subterms(&self) -> SubTerms {
         SubTerms { stack: vec![self] }
     }
 }
@@ -91,8 +91,8 @@ impl Display for Relation {
 }
 
 impl Relation {
-    pub fn sub_terms(&self) -> Chain<SubTerms<'_>, SubTerms<'_>> {
-        self.left.sub_terms().chain(self.right.sub_terms())
+    pub fn subterms(&self) -> Chain<SubTerms<'_>, SubTerms<'_>> {
+        self.left.subterms().chain(self.right.subterms())
     }
 
     #[allow(dead_code)]

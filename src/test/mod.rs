@@ -77,7 +77,7 @@ mod tests {
 
     fn test_subterms(relation: Relation, expected: Vec<&str>) {
         let subterms = relation
-            .sub_terms()
+            .subterms()
             .map(|term| format!("{}", term))
             .collect::<Vec<String>>();
 

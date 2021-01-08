@@ -11,9 +11,9 @@ fn main() {
     println!("Relation");
     println!("{}\n", relation);
 
-    let sub_terms: Vec<_> = relation.sub_terms().collect();
+    let subterms: Vec<_> = relation.subterms().collect();
     println!("Subterms");
-    for sub_term in sub_terms {
-        println!("{}", sub_term);
+    for subterm in subterms {
+        println!("{}", subterm);
     }
 }
