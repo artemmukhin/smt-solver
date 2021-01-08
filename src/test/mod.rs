@@ -72,4 +72,9 @@ mod tests {
             .collect::<HashSet<_>>();
         assert_eq!(subterms_set, expected_set);
     }
+    
+    // TODO: tests on dag generation
+    // TODO: tests on union-find generation
+    // TODO: tests on function congruence
+    // TODO: tests on satisfiability
 }

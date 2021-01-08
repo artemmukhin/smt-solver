@@ -149,6 +149,8 @@ impl Relation {
 struct NodeWrapper<'a>(&'a Term);
 
 pub struct Solver<'a> {
+    equal_relations: Vec<&'a Relation>,
+    not_equal_relations: Vec<&'a Relation>,
     subterms: Vec<&'a Term>,
     dag: Dag<NodeWrapper<'a>, ()>,
     union_find: UnionFind,
@@ -156,11 +158,38 @@ pub struct Solver<'a> {
 
 impl<'a> Solver<'a> {
     pub fn from(relations: &'a Vec<Relation>) -> Solver<'a> {
+        let (equal_relations, not_equal_relations) = Solver::split_relations(relations);
         let subterms = Solver::compute_subterms(&relations);
         let dag = Solver::compute_dag(&subterms);
-        let union_find = Solver::compute_union_find(&relations, &subterms);
+        let union_find = Solver::compute_union_find(&equal_relations, &subterms);
+
+        Solver {
+            equal_relations,
+            not_equal_relations,
+            subterms,
+            dag,
+            union_find,
+        }
+    }
+
+    fn split_relations(relations: &'a Vec<Relation>) -> (Vec<&Relation>, Vec<&Relation>) {
+        let equal_relations = relations
+            .iter()
+            .filter(|relation| match relation.kind {
+                Kind::Equal => true,
+                Kind::NotEqual => false,
+            })
+            .collect::<Vec<_>>();
+
+        let not_equal_relations = relations
+            .iter()
+            .filter(|relation| match relation.kind {
+                Kind::Equal => true,
+                Kind::NotEqual => false,
+            })
+            .collect::<Vec<_>>();
         
-        Solver { subterms, dag, union_find }
+        (equal_relations, not_equal_relations)
     }
 
     fn compute_subterms(relations: &Vec<Relation>) -> Vec<&Term> {
@@ -210,7 +239,7 @@ impl<'a> Solver<'a> {
         dag
     }
 
-    fn compute_union_find(relations: &Vec<Relation>, subterms: &Vec<&Term>) -> UnionFind<usize> {
+    fn compute_union_find(equal_relations: &Vec<&Relation>, subterms: &Vec<&Term>) -> UnionFind<usize> {
         let all_subterms_indices: HashMap<&Term, usize> = subterms
             .iter()
             .enumerate()
@@ -218,15 +247,8 @@ impl<'a> Solver<'a> {
             .collect();
 
         let mut union_find = UnionFind::new(subterms.len());
-        let eq_relations = relations
-            .iter()
-            .filter(|relation| match relation.kind {
-                Kind::Equal => true,
-                Kind::NotEqual => false,
-            })
-            .collect::<Vec<_>>();
 
-        for relation in eq_relations {
+        for relation in equal_relations {
             let left_index = all_subterms_indices[&relation.left];
             let right_index = all_subterms_indices[&relation.right];
             union_find.union(right_index, left_index);
@@ -271,9 +293,9 @@ impl<'a> Solver<'a> {
         }
 
         for (child1, child2) in node1_children.iter().zip(node2_children.iter()) {
-            let term1_repr = self.union_find.find(child1.index());
-            let term2_repr = self.union_find.find(child2.index());
-            if term1_repr != term2_repr {
+            let term1_class = self.union_find.find(child1.index());
+            let term2_class = self.union_find.find(child2.index());
+            if term1_class != term2_class {
                 return false;
             }
         }
@@ -282,7 +304,6 @@ impl<'a> Solver<'a> {
     }
 
     pub fn find_congruent(&self) -> Vec<(usize, usize)> {
-        // TODO: propagate the new congruence with symmetry, transitivity, and functional congruence
         let mut result = vec![];
         for index1 in 0..self.subterms.len() {
             for index2 in index1 + 1..self.subterms.len() {
@@ -297,6 +318,64 @@ impl<'a> Solver<'a> {
         for (index1, index2) in result.iter() {
             println!("{} ~ {}", self.subterms[*index1], self.subterms[*index2]);
         }
+        println!();
         result
+    }
+
+    fn all_congruent_predecessors(&self, node: NodeIndex) -> Vec<NodeIndex> {
+        self.dag
+            .parents(node)
+            .iter(&self.dag)
+            .filter(|(_, pred)| self.congruent(node, *pred))
+            .map(|(_, pred)| pred)
+            .collect()
+    }
+
+    fn merge(&mut self, node1: NodeIndex, node2: NodeIndex) {
+        let index1 = node1.index();
+        let index2 = node2.index();
+        let node1_class = self.union_find.find(index1);
+        let node2_class = self.union_find.find(index2);
+
+        if node1_class != node2_class {
+            let preds1 = self.all_congruent_predecessors(node1);
+            let preds2 = self.all_congruent_predecessors(node2);
+
+            self.union_find.union(index1, index2);
+
+            for (pred1, pred2) in preds1.iter().zip(preds2.iter()) {
+                let pred1_class = self.union_find.find(pred1.index());
+                let pred2_class = self.union_find.find(pred2.index());
+                if pred1_class != pred2_class && self.congruent(*pred1, *pred2) {
+                    self.merge(*pred1, *pred2);
+                }
+            }
+        }
+    }
+
+    pub fn check_satisfiable(&mut self) -> bool {
+        let equal_relations = self.equal_relations.clone();
+        let not_equal_relations = self.not_equal_relations.clone();
+        
+        for relation in equal_relations {
+            let index1 = self.subterms.iter().position(|term| *term == &relation.left).unwrap();
+            let index2 = self.subterms.iter().position(|term| *term == &relation.right).unwrap();
+
+            let dag_index1 = self.dag.from_index(index1);
+            let dag_index2 = self.dag.from_index(index2);
+            self.merge(dag_index1, dag_index2)
+        }
+        
+        for relation in not_equal_relations {
+            let index1 = self.subterms.iter().position(|term| *term == &relation.left).unwrap();
+            let index2 = self.subterms.iter().position(|term| *term == &relation.right).unwrap();
+            
+            let class1 = self.union_find.find(index1);
+            let class2 = self.union_find.find(index2);
+            if class1 == class2 {
+                return false;
+            }
+        }
+        return true;
     }
 }

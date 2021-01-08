@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use smt_solver;
 use smt_solver::{Kind, Relation, Solver, Term};
 
@@ -28,6 +26,12 @@ fn get_unsat_example() -> Vec<Relation> {
 
 fn main() {
     let relations = get_unsat_example();
-    let solver = Solver::from(&relations);
+    let mut solver = Solver::from(&relations);
     let _ = solver.find_congruent();
+    let is_satisfiable = solver.check_satisfiable();
+    if is_satisfiable {
+        println!("Satisfiable");
+    } else {
+        println!("Unsatisfiable");
+    }
 }
