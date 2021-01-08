@@ -3,6 +3,38 @@ mod tests {
     use crate::{Relation, Term, Kind};
 
     #[test]
+    fn test_subterms_simple_vars() {
+        // `x = y`
+        test_subterms(
+            Relation {
+                left: Term::var("x"),
+                right: Term::var("y"),
+                kind: Kind::Equal,
+            }, vec![
+                "x",
+                "y",
+            ],
+        );
+    }
+
+    #[test]
+    fn test_subterms_simple_funcs() {
+        // `f(x) = g(x)`
+        test_subterms(
+            Relation {
+                left: Term::fun("f", vec![Term::var("x")]),
+                right: Term::fun("g", vec![Term::var("x")]),
+                kind: Kind::Equal,
+            }, vec![
+                "f(x)",
+                "x",
+                "g(x)",
+                "x",
+            ],
+        );
+    }
+
+    #[test]
     fn test_subterms_1() {
         // `f(x, y) = g(x)`
         test_subterms(
