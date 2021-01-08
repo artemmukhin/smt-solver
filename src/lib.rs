@@ -5,7 +5,7 @@ use std::fmt;
 #[cfg(test)]
 mod test;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Term {
     pub name: String,
     pub arguments: Vec<Box<Term>>,
@@ -57,7 +57,9 @@ impl<'a> Iterator for SubTerms<'a> {
         } else {
             let cur: Option<&Term> = self.stack.pop();
             for term in cur.iter() {
-                for t in term.arguments.iter() { self.stack.push(&**t) }
+                for t in term.arguments.iter() {
+                    self.stack.push(&**t)
+                }
             }
             cur
         }

@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::{Relation, Term, Kind};
+    use std::collections::HashSet;
 
     #[test]
     fn test_subterms_simple_vars() {
@@ -26,10 +27,9 @@ mod tests {
                 right: Term::fun("g", vec![Term::var("x")]),
                 kind: Kind::Equal,
             }, vec![
+                "x",
                 "f(x)",
-                "x",
                 "g(x)",
-                "x",
             ],
         );
     }
@@ -43,11 +43,10 @@ mod tests {
                 right: Term::fun("g", vec![Term::var("x")]),
                 kind: Kind::Equal,
             }, vec![
-                "f(x,y)",
+                "x",
                 "y",
-                "x",
+                "f(x,y)",
                 "g(x)",
-                "x",
             ],
         );
     }
@@ -64,23 +63,24 @@ mod tests {
                 right: Term::var("a"),
                 kind: Kind::NotEqual,
             }, vec![
-                "u(v(a),t(b,a))",
-                "t(b,a)",
                 "a",
                 "b",
                 "v(a)",
-                "a",
-                "a",
+                "t(b,a)",
+                "u(v(a),t(b,a))",
             ],
         );
     }
 
     fn test_subterms(relation: Relation, expected: Vec<&str>) {
-        let subterms = relation
+        let subterms_set = relation
             .subterms()
             .map(|term| format!("{}", term))
-            .collect::<Vec<String>>();
-
-        assert_eq!(&subterms[..], &expected[..]);
+            .collect::<HashSet<_>>();
+        let expected_set = expected
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect::<HashSet<_>>();
+        assert_eq!(subterms_set, expected_set); 
     }
 }
