@@ -3,3 +3,6 @@ name = "smt-solver"
 version = "0.1.0"
 authors = ["ortem <ortem00@gmail.com>"]
 edition = "2018"
+
+[dependencies]
+disjoint-sets = "0.4.2"
