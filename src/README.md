@@ -1,0 +1,2 @@
+# SMT solver for theory of Equality and [Uninterpreted Functions](https://en.wikipedia.org/wiki/Uninterpreted_function)
+The implementation is based on [union-find](https://en.wikipedia.org/wiki/Disjoint-set_data_structure) congruence closure algorithm

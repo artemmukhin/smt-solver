@@ -1,0 +1,5 @@
+[package]
+name = "smt-solver"
+version = "0.1.0"
+authors = ["ortem <ortem00@gmail.com>"]
+edition = "2018"
