@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::iter::Chain;
@@ -149,30 +149,54 @@ impl Relation {
 struct NodeWrapper<'a>(&'a Term);
 
 pub struct Solver<'a> {
-    all_subterms: &'a Vec<&'a Term>,
+    subterms: Vec<&'a Term>,
     dag: Dag<NodeWrapper<'a>, ()>,
     union_find: UnionFind,
 }
 
 impl<'a> Solver<'a> {
-    pub fn from(all_subterms: &'a Vec<&'a Term>, relations: &'a Vec<Relation>) -> Solver<'a> {
-        Solver {
-            all_subterms,
-            dag: Solver::compute_dag(&all_subterms),
-            union_find: Solver::compute_union_find(&relations, &all_subterms),
-        }
+    pub fn from(relations: &'a Vec<Relation>) -> Solver<'a> {
+        let subterms = Solver::compute_subterms(&relations);
+        let dag = Solver::compute_dag(&subterms);
+        let union_find = Solver::compute_union_find(&relations, &subterms);
+        
+        Solver { subterms, dag, union_find }
     }
 
-    fn compute_dag<'b>(all_subterms: &'b Vec<&Term>) -> Dag<NodeWrapper<'b>, (), u32> {
+    fn compute_subterms(relations: &Vec<Relation>) -> Vec<&Term> {
+        let mut all_subterms: Vec<&Term> = vec![];
+
+        let mut visited: HashSet<&Term> = HashSet::new();
+
+        for relation in relations.iter() {
+            println!("Relation: {}", relation);
+            let subterms = relation.subterms().collect::<HashSet<_>>();
+            for subterm in subterms {
+                if !visited.contains(subterm) {
+                    all_subterms.push(subterm);
+                    visited.insert(subterm);
+                }
+            }
+        }
+        println!("Subterms:");
+        for subterm in all_subterms.iter() {
+            println!("{}", subterm);
+        }
+        println!();
+
+        all_subterms
+    }
+
+    fn compute_dag<'b>(subterms: &Vec<&'b Term>) -> Dag<NodeWrapper<'b>, (), u32> {
         let mut dag = Dag::<NodeWrapper, (), u32>::new();
         let mut nodes: HashMap<&Term, NodeIndex> = HashMap::new();
 
-        for subterm in all_subterms.iter() {
+        for subterm in subterms.iter() {
             let node = NodeWrapper(*subterm);
             let index = dag.add_node(node);
             nodes.insert(*subterm, index);
         }
-        for subterm in all_subterms.iter() {
+        for subterm in subterms.iter() {
             let node = nodes[*subterm];
             let children = subterm
                 .arguments
@@ -186,17 +210,14 @@ impl<'a> Solver<'a> {
         dag
     }
 
-    fn compute_union_find(
-        relations: &Vec<Relation>,
-        all_subterms: &Vec<&Term>,
-    ) -> UnionFind<usize> {
-        let all_subterms_indices: HashMap<&Term, usize> = all_subterms
+    fn compute_union_find(relations: &Vec<Relation>, subterms: &Vec<&Term>) -> UnionFind<usize> {
+        let all_subterms_indices: HashMap<&Term, usize> = subterms
             .iter()
             .enumerate()
             .map(|(i, term)| (*term, i))
             .collect();
 
-        let mut union_find = UnionFind::new(all_subterms.len());
+        let mut union_find = UnionFind::new(subterms.len());
         let eq_relations = relations
             .iter()
             .filter(|relation| match relation.kind {
@@ -212,7 +233,7 @@ impl<'a> Solver<'a> {
         }
 
         println!("Union-Find");
-        for subterm in all_subterms.iter() {
+        for subterm in subterms.iter() {
             let index = all_subterms_indices[subterm];
             println!(
                 "{}: {} -> class #{}",
@@ -263,14 +284,18 @@ impl<'a> Solver<'a> {
     pub fn find_congruent(&self) -> Vec<(usize, usize)> {
         // TODO: propagate the new congruence with symmetry, transitivity, and functional congruence
         let mut result = vec![];
-        for index1 in 0..self.all_subterms.len() {
-            for index2 in index1 + 1..self.all_subterms.len() {
+        for index1 in 0..self.subterms.len() {
+            for index2 in index1 + 1..self.subterms.len() {
                 let dag_index1 = self.dag.from_index(index1);
                 let dag_index2 = self.dag.from_index(index2);
                 if self.congruent(dag_index1, dag_index2) {
                     result.push((index1, index2));
                 }
             }
+        }
+        println!("Congruent:");
+        for (index1, index2) in result.iter() {
+            println!("{} ~ {}", self.subterms[*index1], self.subterms[*index2]);
         }
         result
     }

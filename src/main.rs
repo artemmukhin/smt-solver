@@ -28,33 +28,6 @@ fn get_unsat_example() -> Vec<Relation> {
 
 fn main() {
     let relations = get_unsat_example();
-    let mut all_subterms: Vec<&Term> = vec![];
-
-    let mut visited: HashSet<&Term> = HashSet::new();
-
-    for relation in relations.iter() {
-        println!("Relation: {}", relation);
-        let subterms = relation.subterms().collect::<HashSet<_>>();
-        for subterm in subterms {
-            if !visited.contains(subterm) {
-                all_subterms.push(subterm);
-                visited.insert(subterm);
-            }
-        }
-    }
-    let all_subterms = all_subterms;
-
-    println!("Subterms:");
-    for subterm in all_subterms.iter() {
-        println!("{}", subterm);
-    }
-    println!();
-
-    let solver = Solver::from(&all_subterms, &relations);
-    let congruent = solver.find_congruent();
-    
-    println!("Congruent:");
-    for (index1, index2) in congruent {
-        println!("{} ~ {}", all_subterms[index1], all_subterms[index2]);
-    }
+    let solver = Solver::from(&relations);
+    let _ = solver.find_congruent();
 }
