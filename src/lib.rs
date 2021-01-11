@@ -303,22 +303,18 @@ impl<'a> Solver<'a> {
         return true;
     }
 
-    pub fn find_congruent(&self) -> Vec<(usize, usize)> {
+    #[cfg(test)]
+    pub fn find_all_congruent_terms(&self) -> Vec<String> {
         let mut result = vec![];
         for index1 in 0..self.subterms.len() {
             for index2 in index1 + 1..self.subterms.len() {
                 let dag_index1 = self.dag.from_index(index1);
                 let dag_index2 = self.dag.from_index(index2);
                 if self.congruent(dag_index1, dag_index2) {
-                    result.push((index1, index2));
+                    result.push(format!("{} ~ {}", self.subterms[index1], self.subterms[index2]));
                 }
             }
         }
-        println!("Congruent:");
-        for (index1, index2) in result.iter() {
-            println!("{} ~ {}", self.subterms[*index1], self.subterms[*index2]);
-        }
-        println!();
         result
     }
 
@@ -344,9 +340,12 @@ impl<'a> Solver<'a> {
             self.union_find.union(index1, index2);
 
             for (pred1, pred2) in preds1.iter().zip(preds2.iter()) {
-                let pred1_class = self.union_find.find(pred1.index());
-                let pred2_class = self.union_find.find(pred2.index());
+                let index1 = pred1.index();
+                let index2 = pred2.index();
+                let pred1_class = self.union_find.find(index1);
+                let pred2_class = self.union_find.find(index2);
                 if pred1_class != pred2_class && self.congruent(*pred1, *pred2) {
+                    println!("Congruence found: {} ~ {}", self.subterms[index1], self.subterms[index2]);
                     self.merge(*pred1, *pred2);
                 }
             }
@@ -356,7 +355,7 @@ impl<'a> Solver<'a> {
     pub fn check_satisfiable(&mut self) -> bool {
         let equal_relations = self.equal_relations.clone();
         let not_equal_relations = self.not_equal_relations.clone();
-        
+
         for relation in equal_relations {
             let index1 = self.subterms.iter().position(|term| *term == &relation.left).unwrap();
             let index2 = self.subterms.iter().position(|term| *term == &relation.right).unwrap();
@@ -365,11 +364,11 @@ impl<'a> Solver<'a> {
             let dag_index2 = self.dag.from_index(index2);
             self.merge(dag_index1, dag_index2)
         }
-        
+
         for relation in not_equal_relations {
             let index1 = self.subterms.iter().position(|term| *term == &relation.left).unwrap();
             let index2 = self.subterms.iter().position(|term| *term == &relation.right).unwrap();
-            
+
             let class1 = self.union_find.find(index1);
             let class2 = self.union_find.find(index2);
             if class1 == class2 {
