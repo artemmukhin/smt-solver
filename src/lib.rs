@@ -184,11 +184,11 @@ impl<'a> Solver<'a> {
         let not_equal_relations = relations
             .iter()
             .filter(|relation| match relation.kind {
-                Kind::Equal => true,
-                Kind::NotEqual => false,
+                Kind::Equal => false,
+                Kind::NotEqual => true,
             })
             .collect::<Vec<_>>();
-        
+
         (equal_relations, not_equal_relations)
     }
 
