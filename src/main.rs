@@ -1,14 +1,15 @@
 use smt_solver;
 use smt_solver::{Kind, Relation, Solver, Term};
 
-fn get_unsat_example() -> Vec<Relation> {
-    vec![
+fn main() {
+    let relations = vec![
         // `f(x, y) = x`
         Relation {
             left: Term::fun("f", vec![Term::var("x"), Term::var("y")]),
             right: Term::var("x"),
             kind: Kind::Equal,
         },
+
         // `f(f(x, y), y) != x`
         Relation {
             left: Term::fun(
@@ -20,13 +21,10 @@ fn get_unsat_example() -> Vec<Relation> {
             ),
             right: Term::var("x"),
             kind: Kind::NotEqual,
-        },
-    ]
-}
+        }
+    ];
 
-fn main() {
-    let relations = get_unsat_example();
-    let mut solver = Solver::from(&relations);
+    let mut solver = Solver::from(relations.iter().collect());
     let is_satisfiable = solver.check_satisfiable();
     if is_satisfiable {
         println!("Satisfiable");

@@ -7,13 +7,13 @@ fn test_sat_1() {
     test_satisfiability(
         vec![
             // `f(x, y) = x`
-            Relation {
+            &Relation {
                 left: Term::fun("f", vec![Term::var("x"), Term::var("y")]),
                 right: Term::var("x"),
                 kind: Kind::Equal,
             },
             // `f(f(x, x), x) = x`
-            Relation {
+            &Relation {
                 left: Term::fun(
                     "f",
                     vec![
@@ -24,7 +24,9 @@ fn test_sat_1() {
                 right: Term::var("x"),
                 kind: Kind::Equal,
             },
-        ], true)
+        ],
+        true,
+    )
 }
 
 #[test]
@@ -32,7 +34,7 @@ fn test_sat_2() {
     test_satisfiability(
         vec![
             // f(f(x)) = x
-            Relation {
+            &Relation {
                 left: Term::fun(
                     "f",
                     vec![Term::fun("f", vec![Term::var("x")])],
@@ -40,21 +42,23 @@ fn test_sat_2() {
                 right: Term::var("x"),
                 kind: Kind::Equal,
             },
-            
+
             // f(x) = y
-            Relation {
+            &Relation {
                 left: Term::fun("f", vec![Term::var("x")]),
                 right: Term::var("y"),
                 kind: Kind::Equal,
             },
-            
+
             // x != y
-            Relation {
+            &Relation {
                 left: Term::var("x"),
                 right: Term::var("y"),
                 kind: Kind::NotEqual,
             }
-        ], true)
+        ],
+        true,
+    )
 }
 
 #[test]
@@ -62,13 +66,14 @@ fn test_unsat_1() {
     test_satisfiability(
         vec![
             // `f(x, y) = x`
-            Relation {
+            &Relation {
                 left: Term::fun("f", vec![Term::var("x"), Term::var("y")]),
                 right: Term::var("x"),
                 kind: Kind::Equal,
             },
+            
             // `f(f(x, y), y) != x`
-            Relation {
+            &Relation {
                 left: Term::fun(
                     "f",
                     vec![
@@ -79,11 +84,13 @@ fn test_unsat_1() {
                 right: Term::var("x"),
                 kind: Kind::NotEqual,
             },
-        ], false)
+        ],
+        false,
+    )
 }
 
-fn test_satisfiability(relations: Vec<Relation>, expected: bool) {
-    let mut solver = Solver::from(&relations);
+fn test_satisfiability(relations: Vec<&Relation>, expected: bool) {
+    let mut solver = Solver::from(relations);
     let is_satisfiable = solver.check_satisfiable();
     assert_eq!(is_satisfiable, expected);
 }

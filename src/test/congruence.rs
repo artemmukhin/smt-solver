@@ -7,13 +7,13 @@ fn test_congruence_1() {
     test_congruence(
         vec![
             // `f(x, y) = x`
-            Relation {
+            &Relation {
                 left: Term::fun("f", vec![Term::var("x"), Term::var("y")]),
                 right: Term::var("x"),
                 kind: Kind::Equal,
             },
             // `f(f(x, y), y) != x`
-            Relation {
+            &Relation {
                 left: Term::fun(
                     "f",
                     vec![
@@ -31,8 +31,9 @@ fn test_congruence_1() {
     )
 }
 
-fn test_congruence(relations: Vec<Relation>, expected: Vec<&str>) {
-    let solver = Solver::from(&relations);
+fn test_congruence(relations: Vec<&Relation>, expected: Vec<&str>) {
+    let mut solver = Solver::from(relations);
+    let _ = solver.check_satisfiable();
     let congruent = solver.find_all_congruent_terms();
     assert_eq!(congruent, expected);
 }

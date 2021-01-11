@@ -10,7 +10,7 @@ use disjoint_sets::UnionFind;
 #[cfg(test)]
 mod test;
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash)]
 pub struct Term {
     pub name: String,
     pub arguments: Vec<Box<Term>>,
@@ -72,7 +72,7 @@ impl<'a> Iterator for SubTerms<'a> {
         } else {
             let cur: Option<&Term> = self.stack.pop();
             for term in cur.iter() {
-                for t in term.arguments.iter() {
+                for t in term.arguments.iter().rev() {
                     self.stack.push(&**t)
                 }
             }
@@ -149,57 +149,47 @@ impl Relation {
 struct NodeWrapper<'a>(&'a Term);
 
 pub struct Solver<'a> {
-    equal_relations: Vec<&'a Relation>,
-    not_equal_relations: Vec<&'a Relation>,
+    relations: Vec<&'a Relation>,
     subterms: Vec<&'a Term>,
     dag: Dag<NodeWrapper<'a>, ()>,
     union_find: UnionFind,
 }
 
 impl<'a> Solver<'a> {
-    pub fn from(relations: &'a Vec<Relation>) -> Solver<'a> {
-        let (equal_relations, not_equal_relations) = Solver::split_relations(relations);
+    pub fn from(relations: Vec<&'a Relation>) -> Solver<'a> {
         let subterms = Solver::compute_subterms(&relations);
         let dag = Solver::compute_dag(&subterms);
-        let union_find = Solver::compute_union_find(&equal_relations, &subterms);
+        let union_find = UnionFind::new(subterms.len());
 
         Solver {
-            equal_relations,
-            not_equal_relations,
+            relations,
             subterms,
             dag,
             union_find,
         }
     }
 
-    fn split_relations(relations: &'a Vec<Relation>) -> (Vec<&Relation>, Vec<&Relation>) {
-        let equal_relations = relations
-            .iter()
-            .filter(|relation| match relation.kind {
-                Kind::Equal => true,
-                Kind::NotEqual => false,
-            })
-            .collect::<Vec<_>>();
+    fn split_relations(relations: &Vec<&'a Relation>) -> (Vec<&'a Relation>, Vec<&'a Relation>) {
+        let (mut equal_relations, mut not_equal_relations) = (vec![], vec![]);
 
-        let not_equal_relations = relations
-            .iter()
-            .filter(|relation| match relation.kind {
-                Kind::Equal => false,
-                Kind::NotEqual => true,
-            })
-            .collect::<Vec<_>>();
+        for relation in relations {
+            match relation.kind {
+                Kind::Equal => equal_relations.push(*relation),
+                Kind::NotEqual => not_equal_relations.push(*relation)
+            }
+        }
 
         (equal_relations, not_equal_relations)
     }
 
-    fn compute_subterms(relations: &Vec<Relation>) -> Vec<&Term> {
+    fn compute_subterms(relations: &Vec<&'a Relation>) -> Vec<&'a Term> {
         let mut all_subterms: Vec<&Term> = vec![];
 
         let mut visited: HashSet<&Term> = HashSet::new();
 
         for relation in relations.iter() {
             println!("Relation: {}", relation);
-            let subterms = relation.subterms().collect::<HashSet<_>>();
+            let subterms = relation.subterms().collect::<Vec<_>>();
             for subterm in subterms {
                 if !visited.contains(subterm) {
                     all_subterms.push(subterm);
@@ -237,36 +227,6 @@ impl<'a> Solver<'a> {
             }
         }
         dag
-    }
-
-    fn compute_union_find(equal_relations: &Vec<&Relation>, subterms: &Vec<&Term>) -> UnionFind<usize> {
-        let all_subterms_indices: HashMap<&Term, usize> = subterms
-            .iter()
-            .enumerate()
-            .map(|(i, term)| (*term, i))
-            .collect();
-
-        let mut union_find = UnionFind::new(subterms.len());
-
-        for relation in equal_relations {
-            let left_index = all_subterms_indices[&relation.left];
-            let right_index = all_subterms_indices[&relation.right];
-            union_find.union(right_index, left_index);
-        }
-
-        println!("Union-Find");
-        for subterm in subterms.iter() {
-            let index = all_subterms_indices[subterm];
-            println!(
-                "{}: {} -> class #{}",
-                index,
-                subterm,
-                union_find.find(index)
-            );
-        }
-        println!();
-
-        union_find
     }
 
     fn congruent(&self, node1: NodeIndex, node2: NodeIndex) -> bool {
@@ -318,13 +278,8 @@ impl<'a> Solver<'a> {
         result
     }
 
-    fn all_congruent_predecessors(&self, node: NodeIndex) -> Vec<NodeIndex> {
-        self.dag
-            .parents(node)
-            .iter(&self.dag)
-            .filter(|(_, pred)| self.congruent(node, *pred))
-            .map(|(_, pred)| pred)
-            .collect()
+    fn predecessors(&self, node: NodeIndex) -> Vec<NodeIndex> {
+        self.dag.parents(node).iter(&self.dag).map(|(_, n)| n).collect()
     }
 
     fn merge(&mut self, node1: NodeIndex, node2: NodeIndex) {
@@ -334,27 +289,28 @@ impl<'a> Solver<'a> {
         let node2_class = self.union_find.find(index2);
 
         if node1_class != node2_class {
-            let preds1 = self.all_congruent_predecessors(node1);
-            let preds2 = self.all_congruent_predecessors(node2);
+            let preds1 = self.predecessors(node1);
+            let preds2 = self.predecessors(node2);
 
             self.union_find.union(index1, index2);
 
-            for (pred1, pred2) in preds1.iter().zip(preds2.iter()) {
-                let index1 = pred1.index();
-                let index2 = pred2.index();
-                let pred1_class = self.union_find.find(index1);
-                let pred2_class = self.union_find.find(index2);
-                if pred1_class != pred2_class && self.congruent(*pred1, *pred2) {
-                    println!("Congruence found: {} ~ {}", self.subterms[index1], self.subterms[index2]);
-                    self.merge(*pred1, *pred2);
+            for pred1 in preds1.iter() {
+                for pred2 in preds2.iter() {
+                    let index1 = pred1.index();
+                    let index2 = pred2.index();
+                    let pred1_class = self.union_find.find(index1);
+                    let pred2_class = self.union_find.find(index2);
+                    if pred1_class != pred2_class && self.congruent(*pred1, *pred2) {
+                        println!("Congruence found: {} ~ {}", self.subterms[index1], self.subterms[index2]);
+                        self.merge(*pred1, *pred2);
+                    }
                 }
             }
         }
     }
 
     pub fn check_satisfiable(&mut self) -> bool {
-        let equal_relations = self.equal_relations.clone();
-        let not_equal_relations = self.not_equal_relations.clone();
+        let (equal_relations, not_equal_relations) = Solver::split_relations(&self.relations);
 
         for relation in equal_relations {
             let index1 = self.subterms.iter().position(|term| *term == &relation.left).unwrap();
@@ -362,7 +318,7 @@ impl<'a> Solver<'a> {
 
             let dag_index1 = self.dag.from_index(index1);
             let dag_index2 = self.dag.from_index(index2);
-            self.merge(dag_index1, dag_index2)
+            self.merge(dag_index1, dag_index2);
         }
 
         for relation in not_equal_relations {
