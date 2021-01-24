@@ -1,6 +1,7 @@
 #![cfg(test)]
 
-use crate::{Solver, Relation, Term, Kind};
+use crate::solver::Solver;
+use crate::{Kind, Relation, Term};
 
 #[test]
 fn test_sat_1() {
@@ -35,27 +36,22 @@ fn test_sat_2() {
         vec![
             // f(f(x)) = x
             &Relation {
-                left: Term::fun(
-                    "f",
-                    vec![Term::fun("f", vec![Term::var("x")])],
-                ),
+                left: Term::fun("f", vec![Term::fun("f", vec![Term::var("x")])]),
                 right: Term::var("x"),
                 kind: Kind::Equal,
             },
-
             // f(x) = y
             &Relation {
                 left: Term::fun("f", vec![Term::var("x")]),
                 right: Term::var("y"),
                 kind: Kind::Equal,
             },
-
             // x != y
             &Relation {
                 left: Term::var("x"),
                 right: Term::var("y"),
                 kind: Kind::NotEqual,
-            }
+            },
         ],
         true,
     )
@@ -71,7 +67,6 @@ fn test_unsat_1() {
                 right: Term::var("x"),
                 kind: Kind::Equal,
             },
-            
             // `f(f(x, y), y) != x`
             &Relation {
                 left: Term::fun(
@@ -81,6 +76,52 @@ fn test_unsat_1() {
                         Term::var("y"),
                     ],
                 ),
+                right: Term::var("x"),
+                kind: Kind::NotEqual,
+            },
+        ],
+        false,
+    )
+}
+
+#[test]
+fn test_unsat_2() {
+    test_satisfiability(
+        vec![
+            // `f(g(x)) = g(f(x))`
+            &Relation {
+                left: Term::fun("f", vec![
+                    Term::fun("g", vec![Term::var("x")])
+                ]),
+                right: Term::fun("g", vec![
+                    Term::fun("f", vec![Term::var("x")])
+                ]),
+                kind: Kind::Equal,
+            },
+            
+            // `f(g(f(y))) = x`
+            &Relation {
+                left: Term::fun("f", vec![
+                    Term::fun("g", vec![
+                        Term::fun("f", vec![Term::var("y")])
+                    ])
+                ]),
+                right: Term::var("x"),
+                kind: Kind::Equal,
+            },
+            
+            // `f(y) = x`
+            &Relation {
+                left: Term::fun("f", vec![Term::var("y")]),
+                right: Term::var("x"),
+                kind: Kind::Equal,
+            },
+
+            // `g(f(x)) != x`
+            &Relation {
+                left: Term::fun("g", vec![
+                    Term::fun("f", vec![Term::var("x")])
+                ]),
                 right: Term::var("x"),
                 kind: Kind::NotEqual,
             },

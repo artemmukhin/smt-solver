@@ -72,4 +72,3 @@ fn test_subterms(relation: Relation, expected: Vec<&str>) {
         .collect::<HashSet<_>>();
     assert_eq!(subterms_set, expected_set);
 }
-

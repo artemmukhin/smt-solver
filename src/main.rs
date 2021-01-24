@@ -1,5 +1,5 @@
-use smt_solver;
-use smt_solver::{Kind, Relation, Solver, Term};
+use smt_solver::solver::Solver;
+use smt_solver::{Kind, Relation, Term};
 
 fn main() {
     let relations = vec![
@@ -9,7 +9,6 @@ fn main() {
             right: Term::var("x"),
             kind: Kind::Equal,
         },
-
         // `f(f(x, y), y) != x`
         Relation {
             left: Term::fun(
@@ -21,7 +20,7 @@ fn main() {
             ),
             right: Term::var("x"),
             kind: Kind::NotEqual,
-        }
+        },
     ];
 
     let mut solver = Solver::from(relations.iter().collect());

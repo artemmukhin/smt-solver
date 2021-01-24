@@ -1,6 +1,7 @@
 #![cfg(test)]
 
-use crate::{Solver, Relation, Term, Kind};
+use crate::solver::Solver;
+use crate::{Kind, Relation, Term};
 
 #[test]
 fn test_congruence_1() {
@@ -25,9 +26,7 @@ fn test_congruence_1() {
                 kind: Kind::NotEqual,
             },
         ],
-        vec![
-            "f(x,y) ~ f(f(x,y),y)"
-        ],
+        vec!["f(x,y) ~ f(f(x,y),y)"],
     )
 }
 
